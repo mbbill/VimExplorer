@@ -2,20 +2,14 @@
 " File:         VimExplorer.vim
 " Brief:        VE - the File Manager within Vim!
 " Authors:      Ming Bai <mbbill AT gmail DOT com>
-" Last Change:  2007-08-08 15:17:46
-" Version:      0.98
+" Last Change:  2007-09-10 00:19:26
+" Version:      0.99
 " Licence:      LGPL
 "
 " Usage:        :h VimExplorer
 "
 "==================================================
 
-
-" Vim version 7.x is needed.
-if v:version < 700
-     echohl ErrorMsg | echomsg "VimExplorer needs vim version >= 7.0!" | echohl None
-     finish
-endif
 
 " See if we are already loaded, thanks to Dennis Hostetler.
 if exists("loaded_vimExplorer")
@@ -24,6 +18,12 @@ else
     let loaded_vimExplorer = 1
 endif
 "
+
+" Vim version 7.x is needed.
+if v:version < 700
+     echohl ErrorMsg | echomsg "VimExplorer needs vim version >= 7.0!" | echohl None
+     finish
+endif
 
 "Load config {{{1
 "#######################################################################
@@ -122,10 +122,17 @@ if !exists("g:VEConf_usingGnome")
     let g:VEConf_usingGnome = 0
 endif
 
+"Recycle path
+if !exists("g:VEConf_recyclePath")
+    let g:VEConf.recyclePath = ''
+else
+    let g:VEConf.recyclePath = g:VEConf_recyclePath
+endif
+
 "Tree panel settings
 "==========================================
 
-"Don't show '+' before empty folders.
+"Show '+' before empty folders.
 "It will cause a little performance lost.
 if exists("g:VEConf_showFolderStatus")
     let VEConf.showFolderStatus = g:VEConf_showFolderStatus
@@ -266,6 +273,7 @@ let VEConf.filePanelHotkey.search          = 'g/'
 let VEConf.filePanelHotkey.markPlace       = 'm'
 let VEConf.filePanelHotkey.gotoPlace       = "'"
 let VEConf.filePanelHotkey.viewMarks       = 'J'
+let VEConf.filePanelHotkey.contextMenuN    = '<rightmouse>'
 "Browsing
 let VEConf.filePanelHotkey.toUpperDir      = '<bs>'
 let VEConf.filePanelHotkey.gotoForward     = '<c-i>'
@@ -280,11 +288,13 @@ let VEConf.filePanelHotkey.yankSingle      = 'yy'
 let VEConf.filePanelHotkey.cutSingle       = 'xx'
 let VEConf.filePanelHotkey.showYankList    = 'yl'
 let VEConf.filePanelHotkey.deleteSingle    = 'dd'
+let VEConf.filePanelHotkey.deleteSingleF   = 'DD'
 let VEConf.filePanelHotkey.openPreview     = 'u'
 let VEConf.filePanelHotkey.closePreview    = 'U'
 "mark
 let VEConf.filePanelHotkey.toggleSelectUp  = '<s-space>'
 let VEConf.filePanelHotkey.toggleSelectDown= '<space>'
+let VEConf.filePanelHotkey.toggleSelMouse  = '<c-LeftMouse>'
 let VEConf.filePanelHotkey.markViaRegexp   = 'Mr'
 let VEConf.filePanelHotkey.markVimFiles    = 'Mv'
 let VEConf.filePanelHotkey.markDirectory   = 'Md'
@@ -292,6 +302,7 @@ let VEConf.filePanelHotkey.markExecutable  = 'Me'
 let VEConf.filePanelHotkey.clearSelect     = 'Mc'
 "multiple file actions
 let VEConf.filePanelHotkey.deleteSelected  = 'sd'
+let VEConf.filePanelHotkey.deleteSelectedF = 'sD'
 let VEConf.filePanelHotkey.yankSelected    = 'sy'
 let VEConf.filePanelHotkey.cutSelected     = 'sx'
 let VEConf.filePanelHotkey.tabViewMulti    = 'se'
@@ -300,6 +311,7 @@ let VEConf.filePanelHotkey.diff2files      = '='
 "visual mode hotkeys.
 let VEConf.filePanelHotkey.visualSelect    = '<space>'
 let VEConf.filePanelHotkey.visualDelete    = 'd'
+let VEConf.filePanelHotkey.visualDeleteF   = 'D'
 let VEConf.filePanelHotkey.visualYank      = 'y'
 let VEConf.filePanelHotkey.visualCut       = 'x'
 "User defined hotkeys, see below.
@@ -383,7 +395,6 @@ function! VEConf_normalActions['startExplorer']()
     call g:VEPlatform.startExplorer()
 endfunction
 
-"Delete multiple files.
 "Multiple file name are contained in the fileList.
 let VEConf_multiFileHotKeys['openMultiFilesWithVim'] = VEConf.filePanelHotkey.tabViewMulti
 function! VEConf_multiFileActions['openMultiFilesWithVim'](fileList)
@@ -592,6 +603,7 @@ function! VEPlatform.copyMultiFile(fileList,topath)
 endfunction
 
 function! VEPlatform.copyfile(filename,topath)
+    "return
     let filename = self.escape(a:filename)
     let topath = self.escape(a:topath)
     if g:VEPlatform.haswin32()
@@ -615,6 +627,23 @@ function! VEPlatform.copyfile(filename,topath)
         return self.system(cmd)
     endif
 endfunction
+
+" The "move" command in win32 is so poor..
+" So I have no choice but copy then delete.
+"function! VEPlatform.movefile(filename,topath)
+"    let filename = self.escape(a:filename)
+"    let topath = self.escape(a:topath)
+"    if executable("mv")
+"        let cmd = "mv -f " . filename . " " . topath
+"        return self.system(cmd)
+"    else
+"        if self.copyfile(a:filename,a:topath)
+"            return self.delete(a:filename,1)
+"        else
+"            return 0
+"        endif
+"    endif
+"endfunction
 
 function! VEPlatform.mkdir(path)
     if g:VEConf.systemEncoding != ''
@@ -712,7 +741,8 @@ function! VEPlatform.startExplorer()
         let pwd = substitute(pwd,'/',"\\",'g')
     endif
     if !self.system(g:VEConf.externalExplorer . " " . pwd)
-        echohl ErrorMsg | echomsg "Failed to start external explorer: " . g:VEConf.externalExplorer | echohl None
+        "echohl ErrorMsg | echomsg "Failed to start external explorer: " . g:VEConf.externalExplorer | echohl None
+        " M$ windows Explorer.exe always return 1 even it starts successfully, shit!
     endif
 endfunction
 
@@ -824,14 +854,14 @@ endfunction
 
 "delete a single file or directory
 "return 0:failed  1:success
-function! VEPlatform.deleteSingle(path)
+function! VEPlatform.deleteSingle(path,bforce)
     if !isdirectory(a:path)
-        if g:VEConf.fileDeleteConfirm && !self.confirm("Delete file: ".a:path,1)
+        if g:VEConf.fileDeleteConfirm && !self.confirm("Are you sure you want to delete \n\"".a:path."\" ?",1)
             echo " "
             "clear the command line
             return 0
         endif
-        if self.delete(a:path)
+        if self.delete(a:path,a:bforce)
             echohl Special | echomsg "File: [" . a:path . "] deleted!" | echohl None
             return 1
         else
@@ -839,33 +869,53 @@ function! VEPlatform.deleteSingle(path)
             return 0
         endif
     else
-        if g:VEConf.fileDeleteConfirm && !self.confirm("Delete the DIR Recursively? : ".a:path,1)
+        if g:VEConf.fileDeleteConfirm && !self.confirm("Are you sure you want to remove the folder \n\"".a:path."\" and all its contents?",1)
             echo " "
             return 0
         endif
         echo " "
-        return self.delete(a:path)
+        return self.delete(a:path,a:bforce)
     endif
 endfunction
 
 "delete multiple files/directory.
 "return 0:failed  1:success
-function! VEPlatform.deleteMultiple(fileList)
+function! VEPlatform.deleteMultiple(fileList,bforce)
     if g:VEConf.fileDeleteConfirm && !self.confirm("Are you sure to delete selected file(s) ?",1)
         echo " "
         return 0
     endif
     for i in a:fileList
-        if !self.delete(i)
+        if !self.delete(i,a:bforce)
             echohl ErrorMsg | echomsg "Failed to delete: " . i | echohl None
         endif
     endfor
     return 1
 endfunction
 
-function! VEPlatform.delete(name)
+function! VEPlatform.delete(name,bforce)
+    if  g:VEPlatform.haswin32()
+        let recPath = tolower(g:VEConf.recyclePath)
+        let delName = tolower(a:name)
+    else
+        let recPath = g:VEConf.recyclePath
+        let delName = a:name
+    endif
+    if !a:bforce && g:VEConf.recyclePath != '' && (stridx(delName,recPath) == -1)
+        if !isdirectory(g:VEConf.recyclePath)
+            if !self.mkdir(g:VEConf.recyclePath) || !isdirectory(g:VEConf.recyclePath)
+                echohl ErrorMsg | echomsg "Can not access recycle bin!" | echohl None
+                return 0
+            endif
+        endif
+        if !self.copyfile(a:name,g:VEConf.recyclePath)
+            echohl ErrorMsg | echomsg "Failed to move the file: [" . a:name . "] to recycle bin." | echohl None
+            return 0
+        "else
+        "    return 1
+        endif
+    endif
     if isdirectory(a:name)
-        "I have no idea how to judge if it is succeed :(
         if g:VEPlatform.haswin32()
             return g:VEPlatform.system(" rmdir /S /Q \"" . self.escape(a:name) . "\"")
         else
@@ -1326,6 +1376,7 @@ let s:VEFilePanel.displayList = []
 "    ...
 "    ]
 let s:VEFilePanel.selectedFiles = []
+let s:VEFilePanel.leavePosition = {}
 let s:VEFilePanel.name = ''
 let s:VEFilePanel.path = ''
 let s:VEFilePanel.width = 0
@@ -1593,9 +1644,9 @@ function! s:VEFilePanel.sortByType()
             continue
         endif
         if g:VEPlatform.haswin32() && !&ssl
-            let matchStr = '\\\..\+$'
+            let matchStr = '\\\.[^\\]\+$'
         else
-            let matchStr = '\/\..\+$'
+            let matchStr = '\/\.[^/]\+$'
         endif
         if matchstr(i,matchStr) != ''
             if !has_key(fileGroup,'#Hidden files')
@@ -1649,15 +1700,31 @@ function! s:VEFilePanel.sortByType()
 endfunction
 
 function! s:VEFilePanel.pathChanged(path)
+    call self.setFocus()
     if self.path == a:path
         return
     endif
+    "store the current mouse position.
+    let linePos = line('.')
+    normal! H
+    let topPos = line('.')
+    let self.leavePosition[self.path] = [topPos,linePos]
+    "
     call g:VEPlatform.cdToPath(a:path)
     let self.selectedFiles = [] "clear the selectedFile list
     let self.path = g:VEPlatform.getcwd()
     call self.refresh()
-    normal! ggM
-    "If path changed, set the cursor to the middle of the screen.
+    "restore position
+    if has_key(self.leavePosition,self.path)
+        exec "normal! " . self.leavePosition[self.path][0] . "G"
+        normal! zt
+        exec "normal! " . self.leavePosition[self.path][1] . "G"
+    else
+        normal! ggM
+        if line('.') < 4 "put the cursor to first dir.
+            normal! 4G
+        endif
+    endif
 endfunction
 
 function! s:VEFilePanel.setFocus()
@@ -1716,12 +1783,12 @@ function! s:VEFilePanel.multiAction(actionName)
     call g:VEConf_multiFileActions[a:actionName](self.selectedFiles)
 endfunction
 
-function! s:VEFilePanel.deleteSingle(line)
+function! s:VEFilePanel.deleteSingle(line,bForce)
     let path = self.displayList[a:line][1]
     if path == ''
         return
     endif
-    if g:VEPlatform.deleteSingle(path)
+    if g:VEPlatform.deleteSingle(path,a:bForce)
         if index(self.selectedFiles,path) != -1
             call remove(self.selectedFiles,index(self.selectedFiles,path))
         endif
@@ -1729,11 +1796,12 @@ function! s:VEFilePanel.deleteSingle(line)
     endif
 endfunction
 
-function! s:VEFilePanel.deleteSelectedFiles()
+function! s:VEFilePanel.deleteSelectedFiles(bForce)
     if empty(self.selectedFiles)
         return
     endif
-    if g:VEPlatform.deleteMultiple(self.selectedFiles)
+    if g:VEPlatform.deleteMultiple(self.selectedFiles,a:bForce)
+        let self.selectedFiles = []
         call self.refresh()
     endif
 endfunction
@@ -1779,7 +1847,7 @@ function! s:VEFilePanel.visualSelect(firstLine,lastLine)
     call self.drawList()
 endfunction
 
-function! s:VEFilePanel.visualDelete(firstLine,lastLine)
+function! s:VEFilePanel.visualDelete(firstLine,lastLine,bForce)
     let displayList = []
     for line in range(a:firstLine,(a:lastLine>=len(self.displayList)?(len(self.displayList)-1):a:lastLine))
         let path = self.displayList[line][1]
@@ -1791,7 +1859,7 @@ function! s:VEFilePanel.visualDelete(firstLine,lastLine)
     if empty(displayList)
         return
     endif
-    if g:VEPlatform.deleteMultiple(displayList)
+    if g:VEPlatform.deleteMultiple(displayList,a:bForce)
         call self.refresh()
     endif
 endfunction
@@ -1831,12 +1899,22 @@ function! s:VEFilePanel.paste()
     endif
     let retList = g:VEPlatform.copyMultiFile(s:VEContainer.clipboard,self.path)
     if s:VEContainer.yankMode == 'cut' && len(retList) != 0
+        "let tmpRec = g:VEConf.recyclePath  " save recycle path
+        "let g:VEConf.recyclePath = ''
         for i in retList
-            call g:VEPlatform.delete(i)
+            call g:VEPlatform.delete(i,1) "force delete
         endfor
+        "let g:VEConf.recyclePath = tmpRec
         let s:VEContainer.yankMode = ''
         let s:VEContainer.clipboard = []
     endif
+    "if s:VEContainer.yankMode == 'cut'
+    "    call g:VEPlatform.copyMultiFile(s:VEContainer.clipboard,self.path,1)
+    "else
+    "    call g:VEPlatform.copyMultiFile(s:VEContainer.clipboard,self.path,0)
+    "endif
+    let s:VEContainer.yankMode = ''
+    let s:VEContainer.clipboard = []
     call self.refresh()
     "call s:VEContainer.showClipboard()
 endfunction!
@@ -1965,13 +2043,15 @@ function! s:VEFilePanel.createActions()
     exec "nnoremap <silent> <buffer> " . g:VEConf.filePanelHotkey.gotoBackward .   " :call VE_GotoBackward()<cr>"
     exec "nnoremap <silent> <buffer> " . g:VEConf.filePanelHotkey.openPreview .    " :call VE_OnFileOpenPreview()<cr>"
     exec "nnoremap <silent> <buffer> " . g:VEConf.filePanelHotkey.closePreview .   " :call VE_ClosePreviewPanel()<cr>"
-    exec "nnoremap <silent> <buffer> " . g:VEConf.filePanelHotkey.deleteSingle .   " :call VE_DeleteSingle()<cr>"
+    exec "nnoremap <silent> <buffer> " . g:VEConf.filePanelHotkey.deleteSingle .   " :call VE_DeleteSingle(0)<cr>"
+    exec "nnoremap <silent> <buffer> " . g:VEConf.filePanelHotkey.deleteSingleF.   " :call VE_DeleteSingle(1)<cr>"
     exec "nnoremap <silent> <buffer> " . g:VEConf.filePanelHotkey.rename .         " :call VE_Rename()<cr>"
     exec "nnoremap <silent> <buffer> " . g:VEConf.filePanelHotkey.refresh .        " :call VE_RefreshFilePanel()<cr>"
     exec "nnoremap <silent> <buffer> " . g:VEConf.filePanelHotkey.toggleSelectUp  ." :call VE_ToggleSelectFile(\"up\")<cr>"
     exec "nnoremap <silent> <buffer> " . g:VEConf.filePanelHotkey.toggleSelectDown." :call VE_ToggleSelectFile(\"down\")<cr>"
     exec "nnoremap <silent> <buffer> " . g:VEConf.filePanelHotkey.clearSelect .    " :call VE_ClearSelectFile()<cr>"
-    exec "nnoremap <silent> <buffer> " . g:VEConf.filePanelHotkey.deleteSelected . " :call VE_DeleteSelectedFiles()<cr>"
+    exec "nnoremap <silent> <buffer> " . g:VEConf.filePanelHotkey.deleteSelected . " :call VE_DeleteSelectedFiles(0)<cr>"
+    exec "nnoremap <silent> <buffer> " . g:VEConf.filePanelHotkey.deleteSelectedF. " :call VE_DeleteSelectedFiles(1)<cr>"
     exec "nnoremap <silent> <buffer> " . g:VEConf.filePanelHotkey.yankSelected .   " :call VE_YankSelectedFiles(\"copy\")<cr>"
     exec "nnoremap <silent> <buffer> " . g:VEConf.filePanelHotkey.cutSelected .    " :call VE_YankSelectedFiles(\"cut\")<cr>"
     exec "nnoremap <silent> <buffer> " . g:VEConf.filePanelHotkey.yankSingle .     " :call VE_YankSingle(\"copy\")<cr>"
@@ -1994,6 +2074,8 @@ function! s:VEFilePanel.createActions()
     exec "nnoremap <silent> <buffer> " . g:VEConf.filePanelHotkey.quitVE .         " :call VEDestroy()<cr>"
     exec "nnoremap <silent> <buffer> " . g:VEConf.filePanelHotkey.toggleHidden .   " :call VE_ToggleHidden()<cr>"
     exec "nnoremap <silent> <buffer> " . g:VEConf.filePanelHotkey.search .         " :call VE_FileSearch()<cr>"
+    exec "nnoremap <silent> <buffer> " . g:VEConf.filePanelHotkey.toggleSelMouse . " <leftmouse>:call VE_ToggleSelectFile(\"\")<cr>"
+    exec "nnoremap <silent> <buffer> " . g:VEConf.filePanelHotkey.contextMenuN .   " <leftmouse>:popup  ]FilePanelPopup<cr>"
 
     let letter = char2nr('a')
     while letter <= char2nr('z')
@@ -2007,7 +2089,8 @@ function! s:VEFilePanel.createActions()
 
     " visual mode map
     exec "vnoremap <silent> <buffer> " . g:VEConf.filePanelHotkey.visualSelect .   " :call VE_VisualSelect()<cr>"
-    exec "vnoremap <silent> <buffer> " . g:VEConf.filePanelHotkey.visualDelete .   " :call VE_VisualDelete()<cr>"
+    exec "vnoremap <silent> <buffer> " . g:VEConf.filePanelHotkey.visualDelete .   " :call VE_VisualDelete(0)<cr>"
+    exec "vnoremap <silent> <buffer> " . g:VEConf.filePanelHotkey.visualDeleteF.   " :call VE_VisualDelete(1)<cr>"
     exec "vnoremap <silent> <buffer> " . g:VEConf.filePanelHotkey.visualYank .     " :call VE_VisualYank(\"copy\")<cr>"
     exec "vnoremap <silent> <buffer> " . g:VEConf.filePanelHotkey.visualCut .      " :call VE_VisualYank(\"cut\")<cr>"
 
@@ -2217,7 +2300,27 @@ let s:VEContainer.clipboard = [] "shared clipboard
 let s:VEContainer.yankMode = ''  "cut or yank
 let s:VEContainer.markPlaces = {}
 
+function! s:VECreatePopMenu()
+    silent! unmenu  ]FilePanelPopup
+    menu    ]FilePanelPopup.&Open               :call VE_OnFileItemClick()<cr>
+    menu    ]FilePanelPopup.-sep0-              :
+    menu    ]FilePanelPopup.&Copy               :call VE_YankSingle("copy")<cr>
+    menu    ]FilePanelPopup.C&ut                :call VE_YankSingle("cut")<cr>
+    menu    ]FilePanelPopup.-sep1-              :
+    menu    ]FilePanelPopup.&Rename             :call VE_Rename()<cr>
+    menu    ]FilePanelPopup.&Delete             :call VE_DeleteSingle(0)<cr>
+    menu    ]FilePanelPopup.Pre&view            :call VE_OnFileOpenPreview()<cr>
+    menu    ]FilePanelPopup.&Mark               :call VE_ToggleSelectFile("")<cr>
+    menu    ]FilePanelPopup.-sep2-              :
+    menu    ]FilePanelPopup.&Paste              :call VE_Paste()<cr>
+    menu    ]FilePanelPopup.&New.&File          :call VE_NewFile()<cr>
+    menu    ]FilePanelPopup.&New.&Directory     :call VE_NewDirectory()<cr>
+    menu    ]FilePanelPopup.-sep3-              :
+    menu    ]FilePanelPopup.Re&fresh            :call VE_RefreshFilePanel()<cr>
+endfunction
+
 function! VENew(path)
+    call s:VECreatePopMenu()
     let frameName = '_' . substitute(reltimestr(reltime()),'\.','','g')
     if a:path == ''
         echohl Special
@@ -2354,10 +2457,10 @@ function! VE_MultiFileAction(actionName)
 endfunction
 
 "Delete single file or directory.
-function! VE_DeleteSingle()
+function! VE_DeleteSingle(bForce)
     let winName = matchstr(bufname("%"),'_[^_]*$')
     if has_key(s:VEContainer,winName)
-        call s:VEContainer[winName].filePanel.deleteSingle(line(".")-1)
+        call s:VEContainer[winName].filePanel.deleteSingle(line(".")-1,a:bForce)
     endif
 endfunction
 
@@ -2426,10 +2529,10 @@ function! VE_NewDirectory()
 endfunction
 
 "delete selected files.
-function! VE_DeleteSelectedFiles()
+function! VE_DeleteSelectedFiles(bForce)
     let winName = matchstr(bufname("%"),'_[^_]*$')
     if has_key(s:VEContainer,winName)
-        call s:VEContainer[winName].filePanel.deleteSelectedFiles()
+        call s:VEContainer[winName].filePanel.deleteSelectedFiles(a:bForce)
     endif
 endfunction
 
@@ -2475,10 +2578,10 @@ function! VE_VisualSelect() range
 endfunction
 
 "visual delete
-function! VE_VisualDelete() range
+function! VE_VisualDelete(bForce) range
     let winName = matchstr(bufname("%"),'_[^_]*$')
     if has_key(s:VEContainer,winName)
-        call s:VEContainer[winName].filePanel.visualDelete(a:firstline-1,a:lastline-1)
+        call s:VEContainer[winName].filePanel.visualDelete(a:firstline-1,a:lastline-1,a:bForce)
     endif
 endfunction
 
@@ -2859,7 +2962,7 @@ function! s:InstallDocumentation(full_name, revision)
 endfunction
 
 " Doc installation call {{{1
-silent call s:InstallDocumentation(expand('<sfile>:p'),"0.98")
+silent call s:InstallDocumentation(expand('<sfile>:p'),"0.99")
 "============================================================
 finish
 
@@ -2988,6 +3091,7 @@ search                  g/              Search.
 markPlace               m{a-z}          Put current path to register(a-z).
 gotoPlace               '{a-z}          Jump to path in register(a-z).
 viewMarks               J               View path in register.
+contextMenuN            <rightmouse>    File panel context menu in normal mode.
 toUpperDir              <bs>            Go to upper directory.
 gotoForward             <c-i>           Forward.
 gotoBackward            <c-o>           Backward.
@@ -3001,19 +3105,22 @@ rename                  R               Rename the file under cursor.
 yankSingle              yy              Copy file under cursor.
 cutSingle               xx              Cut file under cursor.
 showYankList            yl              Show clipboard.
-deleteSingle            dd              Delete file under cursor.
+deleteSingle            dd              Delete file under cursor to recycle bin.
+deleteSingle            DD              Force delete file under cursor.
 openPreview             u               Preview.
 closePreview            U               Close the preview panel.
 toggleSelectUp          <s-space>       Move the cursor up and mark/unmark the
                                         file under cursor.
 toggleSelectDown        <space>         Mark/unmark the file under cursor and
                                         move the cursor down.
+toggleSelMouse          <c-leftmouse>   Mark/unmark the file under cursor.
 markViaRegexp           Mr              Mark via regular expression.
 markVimFiles            Mv              Mark all vim files.
 markDirectory           Md              Mark all directories.
 markExecutable          Me              Mark all executable files.
 clearSelect             Mc              Clear all marks.
-deleteSelected          sd              Delete marked files.
+deleteSelected          sd              Delete marked files to recycle bin.
+deleteSelected          sD              Force delete marked files.
 yankSelected            sy              Copy marked files.
 cutSelected             sx              Cut marked files.
 tabViewMulti            se              Edit every marked file in separate
@@ -3028,7 +3135,8 @@ startExplorer           ;e              Start another file
 
 Visual Mode Hotkeys~
 visualSelect            <space>         Mark files.
-visualDelete            d               Delete files.
+visualDelete            d               Delete files to recycle bin.
+visualDelete            D               Force delete files.
 visualYank              y               Copy files.
 visualCut               x               Cut files.
 tabView                 e               View files in new tabs.
@@ -3087,6 +3195,9 @@ By default, the depth of browse history is 100. Controled by this variable:
 >
     VEConf_browseHistory
 <
+VimExplorer can remember the cursor position every time leaving a directory,
+so it can restore the cursor when return to it. If a directory is newly
+entered, the cursor will be put in the middle of the screen.
 
 3.4  Favorites                                  *VimExplorer-favorite*
 
@@ -3152,7 +3263,8 @@ If you want to view the clipboard, |yl| can be help.
 
 5.3  Delete                                     *VimExplorer-delete*
 
-|dd| in normal mode and |d| in visual mode. Feel good?
+|dd|,|sd| in normal mode and |d| in visual mode can delete file(s) to recycle bin.
+Corresponding |DD|,|sD| and |D| are used to force delete file(s).
 
 5.4  Diff                                       *VimExplorer-diff*
 
@@ -3221,12 +3333,15 @@ Common Options~
 |g:VEConf_usingKDE|                 If set to 1, use "kfmclient"
 |g:VEConf_usingGnome|               If set to 1, use "gnome-open"
 
+|g:VEConf_recyclePath|              Recycle path. Example:
+                                    let g:VEConf_recyclePath = 'C:\VErecycle\'
+
 Tree Panel Options~
 
-|g:VEConf_showFolderStatus|         It controls show '+' before the folders which
-                                    have their own child folders. If it is set
-                                    to 1, every folder will have a '+'.
-                                    Default: 1
+|g:VEConf_showFolderStatus|         It controls whether show '+' before the
+                                    folders which have their own child
+                                    folders. If it is set to 1, every folder
+                                    will have a '+'.  Default: 1
 
 |g:VEConf_treePanelWidth|           Width of tree panel. Default: 30
 
@@ -3285,17 +3400,17 @@ single file hotkeys and actions, multi file hotkeys and actions and normal
 hotkeys and actions.
 They are controlled by these variables:
 
-    |VEConf_singleFileActions|    |VEConf_singleFileHotKeys|
+    |g:VEConf_singleFileActions|    |g:VEConf_singleFileHotKeys|
 
-    |VEConf_multiFileActions|     |VEConf_multiFileHotKeys|
+    |g:VEConf_multiFileActions|     |g:VEConf_multiFileHotKeys|
 
-    |VEConf_normalActions|        |VEConf_normalHotKeys|
+    |g:VEConf_normalActions|        |g:VEConf_normalHotKeys|
 
 All of them are dicts. Example:
 >
-    let VEConf_normalActions = {}
-    let VEConf_normalHotKeys = {}
-    let VEConf_normalHotKeys['test1'] = 'T1'
+    let g:VEConf_normalActions = {}
+    let g:VEConf_normalHotKeys = {}
+    let g:VEConf_normalHotKeys['test1'] = 'T1'
     function! VEConf_normalActions['test1']()
         Renamer
     endfunction
@@ -3303,32 +3418,32 @@ All of them are dicts. Example:
 "test1" is the key. VimExplorer will bind the hotkey and corresponding actions
 automatically.
 >
-    let VEConf_singleFileActions = {}
-    let VEConf_singleFileHotKeys = {}
-    let VEConf_singleFileHotKeys['test2'] = 'T2'
+    let g:VEConf_singleFileActions = {}
+    let g:VEConf_singleFileHotKeys = {}
+    let g:VEConf_singleFileHotKeys['test2'] = 'T2'
     function! VEConf_singleFileActions['test2'](path)
-        call VEPlatform.system("notepad.exe " . VEPlatform.escape(a:path))
+        call g:VEPlatform.system("notepad.exe " . g:VEPlatform.escape(a:path))
     endfunction
 <
 Here, parameter "path" is the path of file under cursor.
 >
-    let VEConf_multiFileActions = {}
-    let VEConf_multiFileHotKeys = {}
-    let VEConf_multiFileHotKeys['test3'] = 'T3'
+    let g:VEConf_multiFileActions = {}
+    let g:VEConf_multiFileHotKeys = {}
+    let g:VEConf_multiFileHotKeys['test3'] = 'T3'
     function! VEConf_multiFileActions['test3'](fileList)
         for i in a:fileList
-            call VEPlatform.start("nautilus " . i)
+            call g:VEPlatform.start("nautilus " . i)
         endfor
     endfunction
 <
 Parameter "fileList" consists of all paths of marked files.
 In addition, VimExplorer provides some platform independent functions:
 >
-    VEPlatform.start(path)
-    VEPlatform.system(cmd)
-    VEPlatform.copyfile(filename,topath)
-    VEPlatform.search(filename,path)
-    VEPlatform.deleteSingle(path)
+    g:VEPlatform.start(path)
+    g:VEPlatform.system(cmd)
+    g:VEPlatform.copyfile(filename,topath)
+    g:VEPlatform.search(filename,path)
+    g:VEPlatform.deleteSingle(path)
 <
 These functions can be used in user defined actions.
 
@@ -3338,7 +3453,7 @@ These functions can be used in user defined actions.
 ==============================================================================
 8.  The Author                                  *VimExplorer-author*
 
-If you found a bug, or have some suggestions , mail me.
+If you have find a bug, or have some suggestions , mail me.
 
 mail: mbbill<AT>gmail<Dot>com
 
@@ -3364,44 +3479,57 @@ P2.  'wildignre' option cause some files disappeared.
 10. Changelog                                   *VimExplorer-changelog*
 
 0.95
-    -   Initial release.
+    - Initial release.
 
 0.96
-    -   Bug fix: VE_normalAction not found.
+    - BUG:  VE_normalAction not found.
 
 0.97
-    -   Change the behaviour of hotkey 'F', now it adds the path under cursor to
-        favorite list. If no path under cursor, use current working path
-        instead.(Thanks to Vincent Wang)
-    -   Bug fix: escape ' %#' for path.
-    -   Add options |g:VEConf_usingKDE| and |g:VEConf_usingGnome| for starting
-        program in *nix environment.
-    -   Check if the script is already loaded, thanks to Dennis Hostetler.
-    -   Change default g:VEConf_systemEncoding to '' (empty).
-    -   Bug fix: favorite selection out of range.
+    - NEW:  Add options |g:VEConf_usingKDE| and |g:VEConf_usingGnome| for
+            starting program in *nix environment.
+    - NEW:  Check if the script is already loaded, thanks to Dennis Hostetler.
+    - BUG:  Escape ' %#' for path.
+    - BUG:  Favorite selection out of range.
+    - CHG:  Change the behaviour of hotkey 'F', now it adds the path under
+            cursor to favorite list. If no path under cursor, use current
+            working path instead.(Thanks to Vincent Wang)
+    - CHG:  Change default g:VEConf_systemEncoding to '' (empty).
 0.98
-    -   Add option VEConf_filePanelFilter.
-    -   Bug fix: Escape <space> in command 'e' 'se' 'u' and '='.
-    -   Bug fix: 'Cut' and 'Paste' command causes file lost.
-    -   Change the default hotkey 'M' and 'B' to 'm','J'.
-    -   Change forward and backward hotkey to |<c-o>| and |<c-i>|(<tab>).
-    -   Change hotkey |<tab>| to |<c-tab>|.
-    -   Change hotkey |mr| |mv| |md| |me| |mc| to |Mr| |Mv| |Md| |Me| |Mc|.
-    -   When GUI is running, use confirm() to pop a dialog instead of input().
+    - NEW:  Add option VEConf_filePanelFilter.
+    - BUG:  Escape <space> in command 'e' 'se' 'u' and '='.
+    - BUG:  'Cut' and 'Paste' command causes file lost.
+    - CHG:  Change the default hotkey 'M' and 'B' to 'm','J'.
+    - CHG:  Change forward and backward hotkey to |<c-o>| and |<c-i>|(<tab>).
+    - CHG:  Change hotkey |<tab>| to |<c-tab>|.
+    - CHG:  Change hotkey |mr| |mv| |md| |me| |mc| to |Mr| |Mv| |Md| |Me| |Mc|.
+    - CHG:  When GUI is running, use confirm() to pop a dialog instead of input().
+0.99
+    - NEW:  Add toggle selection hotkey <c-leftmouse>.
+    - NEW:  Add a context menu in file panel, right click on a file to popup it.
+    - NEW:  Add "delete to recycle",hotkey |dd|,|sd| and |d| in visual mode
+            are used to delete file(s) to recycle bin.The curresponding
+            |DD|,|sD|,|D| hotkey are used to force delete files.
+    - NEW:  Now VE can remember the cursor position when reenter a directory.
+    - BUG:  All files are put to "Hidden Files" group in a hidden directory.
+    - BUG:  'sd' twice after selection will cause an error.
 
 ==============================================================================
 11. TODO                                        *VimExplorer-todo*
     -   More clipboard.
     -   Diff files in different directories.
-    -   Remember the cursor place when switch between directories.
     -   Two panel mode, just like TotalCommand.
     -   Diff directories.
     -   Browse via e.g. FTP, SCP ... directorys on a server.
+    -   Rename file when file exsits in copy operation.
+    -   Compress file.
+    -   Send to.
+    linux下面 ctrl-G 的问题
+
 
 ==============================================================================
 Note 1:
-Renamer is a good plugin used to rename files. The author is John Orr. It can
-be found here:
+Renamer is a good plugin, which is used to rename group of files. The author
+is John Orr. It can be found here:
 http://www.vim.org/scripts/script.php?script_id=1721
 
 
