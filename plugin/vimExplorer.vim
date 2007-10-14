@@ -3534,4 +3534,4 @@ http://www.vim.org/scripts/script.php?script_id=1721
 
 
 === END_DOC
-" vim: set et ff=unix fdm=marker sts=4 sw=4 tw=78:
+" vim: set et fdm=marker sts=4 sw=4 tw=78:
