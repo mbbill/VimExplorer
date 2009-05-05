@@ -2,7 +2,7 @@
 " File:         VimExplorer.vim
 " Brief:        VE - the File Manager within Vim!
 " Authors:      Ming Bai <mbbill AT gmail DOT com>
-" Last Change:  2007-09-10 00:19:26
+" Last Change:  2009-05-06 00:20:25
 " Version:      0.99
 " Licence:      LGPL
 "
@@ -78,7 +78,7 @@ else
 endif
 
 "External explorer name
-if (has("win32") || has("win95") || has("win64") || has("win16"))
+if (has("win32") || has("win95") || has("win64") || has("win16") || has("dos32"))
     if exists("g:VEConf_externalExplorer")
         let VEConf.externalExplorer = g:VEConf_externalExplorer
     else
@@ -447,7 +447,7 @@ let VEPlatform = {}
 
 "has win
 function! VEPlatform.haswin32()
-    if (has("win32") || has("win95") || has("win64") || has("win16"))
+    if (has("win32") || has("win95") || has("win64") || has("win16") || has("dos32"))
         return 1
     else
         return 0
