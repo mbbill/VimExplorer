@@ -623,7 +623,7 @@ function! VEPlatform.copyfile(filename,topath)
         endif
         return self.system(cmd)
     else
-        let cmd = "cp -r " . filename . " " . topath
+        let cmd = "cp -r " . filename . " " . topath . "&"
         return self.system(cmd)
     endif
 endfunction
@@ -651,7 +651,7 @@ function! VEPlatform.mkdir(path)
     else
         let convPath = a:path
     endif
-    return mkdir(convPath)
+    return mkdir(convPath,'p')
 endfunction
 
 function! VEPlatform.mkfile(filename)
@@ -856,7 +856,7 @@ endfunction
 "return 0:failed  1:success
 function! VEPlatform.deleteSingle(path,bforce)
     if !isdirectory(a:path)
-        if g:VEConf.fileDeleteConfirm && !self.confirm("Are you sure you want to delete \n\"".a:path."\" ?",1)
+        if g:VEConf.fileDeleteConfirm && !self.confirm("Delete \n\"".a:path."\" ?",1)
             echo " "
             "clear the command line
             return 0
@@ -869,7 +869,7 @@ function! VEPlatform.deleteSingle(path,bforce)
             return 0
         endif
     else
-        if g:VEConf.fileDeleteConfirm && !self.confirm("Are you sure you want to remove the folder \n\"".a:path."\" and all its contents?",1)
+        if g:VEConf.fileDeleteConfirm && !self.confirm("Remove the folder \n\"".a:path."\" and all its contents?",1)
             echo " "
             return 0
         endif
@@ -881,7 +881,7 @@ endfunction
 "delete multiple files/directory.
 "return 0:failed  1:success
 function! VEPlatform.deleteMultiple(fileList,bforce)
-    if g:VEConf.fileDeleteConfirm && !self.confirm("Are you sure to delete selected file(s) ?",1)
+    if g:VEConf.fileDeleteConfirm && !self.confirm("Delete selected file(s) ?",1)
         echo " "
         return 0
     endif
@@ -919,7 +919,7 @@ function! VEPlatform.delete(name,bforce)
         if g:VEPlatform.haswin32()
             return g:VEPlatform.system(" rmdir /S /Q \"" . self.escape(a:name) . "\"")
         else
-            return g:VEPlatform.system("rm -r " . self.escape(a:name))
+            return g:VEPlatform.system("rm -r " . self.escape(a:name) . "&")
         endif
     else
         if delete(a:name) == 0
@@ -2679,6 +2679,8 @@ function! VE_ToUpperDir()
             return
         endif
         call VE_GotoPath(upperPath)
+        let dir = split(path,'/')
+        call search("  " . dir[-1] . "/\t")
     endif
     exec winNr . "wincmd w"
 endfunction
@@ -3523,7 +3525,6 @@ P2.  'wildignre' option cause some files disappeared.
     -   Rename file when file exsits in copy operation.
     -   Compress file.
     -   Send to.
-    linux下面 ctrl-G 的问题
 
 
 ==============================================================================
