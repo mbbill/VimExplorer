@@ -2075,7 +2075,9 @@ function! s:VEFilePanel.createActions()
     exec "nnoremap <silent> <buffer> " . g:VEConf.filePanelHotkey.toggleHidden .   " :call VE_ToggleHidden()<cr>"
     exec "nnoremap <silent> <buffer> " . g:VEConf.filePanelHotkey.search .         " :call VE_FileSearch()<cr>"
     exec "nnoremap <silent> <buffer> " . g:VEConf.filePanelHotkey.toggleSelMouse . " <leftmouse>:call VE_ToggleSelectFile(\"\")<cr>"
-    exec "nnoremap <silent> <buffer> " . g:VEConf.filePanelHotkey.contextMenuN .   " <leftmouse>:popup  ]FilePanelPopup<cr>"
+    if has('menu')
+        exec "nnoremap <silent> <buffer> " . g:VEConf.filePanelHotkey.contextMenuN .   " <leftmouse>:popup  ]FilePanelPopup<cr>"
+    endif
 
     let letter = char2nr('a')
     while letter <= char2nr('z')
@@ -2320,7 +2322,9 @@ function! s:VECreatePopMenu()
 endfunction
 
 function! VENew(path)
-    call s:VECreatePopMenu()
+    if has('menu')
+        call s:VECreatePopMenu()
+    endif
     let frameName = '_' . substitute(reltimestr(reltime()),'\.','','g')
     if a:path == ''
         echohl Special
