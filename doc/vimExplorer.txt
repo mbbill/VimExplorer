@@ -367,7 +367,8 @@ Common Options~
 |g:VEConf_vimOpenCommand|           The Vim command to open file.
                                     Default: "tabfind"
 
-|g:VEConf_recyclePath|              Recycle path. Example:
+|g:VEConf_recyclePath|              Recycle path. It should be absolute path.
+                                    Example:
                                     let g:VEConf_recyclePath = 'C:\VErecycle\'
 
 Tree Panel Options~
