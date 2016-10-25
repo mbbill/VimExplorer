@@ -362,6 +362,10 @@ Common Options~
 
 |g:VEConf_usingKDE|                 If set to 1, use "kfmclient"
 |g:VEConf_usingGnome|               If set to 1, use "gnome-open"
+|g:VEConf_usingVim|                 If set to 1, always use Vim.
+
+|g:VEConf_vimOpenCommand|           The Vim command to open file.
+                                    Default: "tabfind"
 
 |g:VEConf_recyclePath|              Recycle path. Example:
                                     let g:VEConf_recyclePath = 'C:\VErecycle\'

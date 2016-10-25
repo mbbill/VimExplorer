@@ -121,6 +121,12 @@ endif
 if !exists("g:VEConf_usingGnome")
     let g:VEConf_usingGnome = 0
 endif
+if !exists("g:VEConf_usingVim")
+    let g:VEConf_usingVim = 0
+endif
+if !exists("g:VEConf_vimOpenCommand")
+    let g:VEConf_vimOpenCommand = "tabfind"
+endif
 
 "Recycle path
 if !exists("g:VEConf_recyclePath")
@@ -510,6 +516,14 @@ function! VEPlatform.start(path)
         elseif g:VEConf_usingGnome
             let convPath = "gnome-open " . convPath
             let ret = self.system(convPath)
+        elseif g:VEConf_usingVim
+            let ret = 1
+            try
+                execute g:VEConf_vimOpenCommand . " " . convPath
+            catch
+                let ret = 0
+                echohl ErrorMsg | echomsg v:exception | echohl None
+            endtry
         else " default using gnome-open.
             let convPath = "gnome-open " . convPath
             let ret = self.system(convPath)
