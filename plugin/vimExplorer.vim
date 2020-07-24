@@ -2,7 +2,7 @@
 " File:         VimExplorer.vim
 " Brief:        VE - the File Manager within Vim!
 " Authors:      Ming Bai <mbbill AT gmail DOT com>
-" Last Change:  2009-05-06 00:20:25
+" Last Change:  2020-07-24 20:02:45 +0800
 " Version:      0.99
 " Licence:      LGPL
 "
@@ -1838,7 +1838,7 @@ function! s:VEFilePanel.toggleSelect(direction)
     if a:direction == "down"
         exec "norm " . "\<down>"
     endif
-endfunction!
+endfunction
 
 function! s:VEFilePanel.clearSelect()
     let self.selectedFiles = []
@@ -1931,7 +1931,7 @@ function! s:VEFilePanel.paste()
     let s:VEContainer.clipboard = []
     call self.refresh()
     "call s:VEContainer.showClipboard()
-endfunction!
+endfunction
 
 function! s:VEFilePanel.markViaRegexp(regexp)
     if a:regexp == ''
