@@ -2856,7 +2856,7 @@ function! VE_ToggleHidden()
 endfunction
 
 command! -nargs=? -complete=file VE    call VENew('<args>')
-command! -nargs=0 -complete=file VEC   call VEDestroy()
+command! -nargs=? -complete=file VEC   call VEDestroy()
 
 
 " vim: set et fdm=marker sts=4 sw=4 tw=78:
